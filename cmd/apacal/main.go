@@ -21,10 +21,10 @@ import (
 
 var (
 	webAddr    = flag.String("web", "http://localhost:8080", "address of the DisplayCAL web interface")
-	numPixels  = flag.Uint("pixels", 1, "number of LEDs to drive")
-	firstPixel = flag.Uint("from", 0, "first pixel to illuminate")
-	lastPixel  = flag.Uint("to", 1, "last pixel to illuminate")
-	intensity  = flag.Int("intensity", 80, "upper bound on brightness (0-255); see apa102.Opts.Intensity")
+	numPixels  = flag.Int("n", 1, "number of LEDs to drive")
+	firstPixel = flag.Int("from", 0, "first pixel to illuminate; 0 is the first pixel")
+	lastPixel  = flag.Int("to", -1, "last pixel to illuminate (exclusive); -1 to use all pixels")
+	intensity  = flag.Int("i", 80, "upper bound on brightness (0-255); see apa102.Opts.Intensity")
 	spiPort    string
 )
 
@@ -45,7 +45,7 @@ func setupSPIFlag() {
 // ignored.
 func setColor(leds *apa102.Dev, c color.RGBA) (int, error) {
 	pixels := make([]byte, *numPixels*3)
-	for i := uint(0); i < *numPixels; i++ {
+	for i := 0; i < *numPixels; i++ {
 		pixels[i*3] = 0
 		pixels[i*3+1] = 0
 		pixels[i*3+2] = 0
@@ -71,11 +71,20 @@ func main() {
 		log.Fatalf("intensity value %d out of range 0-255", *intensity)
 	}
 
-	if *lastPixel >= *numPixels {
-		log.Fatalf("-from is greater than the number of pixels (%d >= %d)", *lastPixel, *numPixels)
+	if *lastPixel == -1 {
+		*lastPixel = *numPixels
 	}
-	if *firstPixel >= *lastPixel {
-		log.Fatalf("-from and -to out of range (%d >= %d)", *firstPixel, *lastPixel)
+	if *lastPixel > *numPixels {
+		log.Fatalf("-to is greater than the number of pixels (%d > %d)", *lastPixel, *numPixels)
+	}
+	if *lastPixel < 0 {
+		log.Fatalf("-to must be > 0 (%d)", *lastPixel)
+	}
+	if *firstPixel < 0 {
+		log.Fatalf("-from must be > 0 (%d)", *firstPixel)
+	}
+	if *firstPixel > *lastPixel {
+		log.Fatalf("-from and -to out of range (%d > %d)", *firstPixel, *lastPixel)
 	}
 
 	webURL, err := url.Parse(*webAddr)
@@ -89,7 +98,7 @@ func main() {
 	}
 	defer p.Close()
 	opts := &apa102.Opts{
-		NumPixels:        int(*numPixels),
+		NumPixels:        *numPixels,
 		Intensity:        uint8(*intensity),
 		Temperature:      apa102.NeutralTemp, // Disable color correction, because the reason you're running this script is to do your own.
 		DisableGlobalPWM: true,

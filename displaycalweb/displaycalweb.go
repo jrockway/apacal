@@ -21,7 +21,10 @@ func urlFor(base *url.URL, color color.RGBA) string {
 
 	// We pick a "bad" random number here.  DisplayCAL doesn't read this, it's just a browser
 	// hack to bust the cache.
-	u.RawQuery = url.QueryEscape(fmt.Sprintf("rgb(%d, %d, %d) %v", color.R, color.G, color.B, rand.Float64()))
+	part := fmt.Sprintf("rgb(%d, %d, %d) %v", color.R, color.G, color.B, rand.Float64())
+
+	// We use PathEscape because they seem to be looking for %20 instead of + when decoding.
+	u.RawQuery = url.PathEscape(part)
 	return u.String()
 }
 
@@ -62,7 +65,7 @@ func Run(ctx context.Context, u *url.URL, ch chan<- color.RGBA) error {
 		}
 		res, err := http.DefaultClient.Do(req)
 		if err != nil {
-			return fmt.Errorf("request %q: %w", addr, err)
+			return err
 		}
 
 		// TODO(jrockway): This can potentially block past ctx.Done().

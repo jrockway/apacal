@@ -100,6 +100,9 @@ loop:
 		}
 	}
 	log.Printf("done")
-	setColor(leds, *numPixels, color.RGBA{0, 0, 0, 255})
+	if _, err := setColor(leds, *numPixels, color.RGBA{0, 0, 0, 255}); err != nil {
+		log.Printf("setting leds to black: %v", err)
+		return
+	}
 	return
 }

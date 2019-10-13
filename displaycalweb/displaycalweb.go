@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"image/color"
 	"io/ioutil"
-	"log"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -56,9 +55,9 @@ func parseColor(body []byte) (color.RGBA, error) {
 // Run writes the color that the DisplayCAL web interface at the provided URL wants you to display
 // to the channel, running until the context is done.
 func Run(ctx context.Context, u *url.URL, ch chan<- color.RGBA) error {
-	lastColor := color.RGBA{R: 1, G: 2, B: 3}
+	c := color.RGBA{R: 1, G: 2, B: 3}
 	for {
-		addr := urlFor(u, lastColor)
+		addr := urlFor(u, c)
 		req, err := http.NewRequestWithContext(ctx, "GET", addr, nil)
 		if err != nil {
 			return fmt.Errorf("create request for %q: %w", addr, err)
@@ -83,15 +82,10 @@ func Run(ctx context.Context, u *url.URL, ch chan<- color.RGBA) error {
 		if err != nil {
 			return fmt.Errorf("request %q: parse color: %v", addr, err)
 		}
-
-		if newColor == lastColor {
-			log.Printf("duplicate color [%v %v] received", lastColor, newColor)
-			continue
-		}
-		lastColor = newColor
+		c = newColor
 
 		select {
-		case ch <- lastColor:
+		case ch <- c:
 		case <-ctx.Done():
 			return fmt.Errorf("send color: %w", ctx.Err())
 		}

@@ -78,7 +78,6 @@ func TestRun(t *testing.T) {
 	ctx, kill := context.WithCancel(context.Background())
 	go func() {
 		h.ch <- []byte("#FFFFFF")
-		h.ch <- []byte("#FFFFFF")
 		h.ch <- []byte("#010203")
 	}()
 

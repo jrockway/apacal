@@ -1,0 +1,12 @@
+github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d/go.mod h1:3eOhrUMpNV+6aFIbp5/iudMxNCF27Vw2OZgy4xEx0Fg=
+github.com/go-ole/go-ole v1.2.4/go.mod h1:XCwSNxSkXRo4vlyPy93sltvi/qJq0jqQhjqQNIwKuxM=
+github.com/google/gousb v0.0.0-20190525092738-2dc560e6bea3/go.mod h1:Tl4HdAs1ThE3gECkNwz+1MWicX6FXddhJEw7L8jRDiI=
+github.com/maruel/ansi256 v1.0.0/go.mod h1:TRJwQ7LqnqgZq0zP9lRNEO9hlwgPbUy5JY6dc0d442k=
+github.com/mattn/go-colorable v0.1.2/go.mod h1:U0ppj6V5qS13XJ6of8GYAs25YV2eR4EVcfRqFIhoBtE=
+github.com/mattn/go-isatty v0.0.8/go.mod h1:Iq45c/XA43vh69/j3iqttzPXn0bhXyGjM0Hdxcsrc5s=
+golang.org/x/sys v0.0.0-20190222072716-a9d3bda3a223/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
+periph.io/x/extra v0.0.0-20190805002851-353eec1a00ff h1:8L5OIOBLdMBSL/aYOI1EP8a8VWTPUUiEl0lBMpT3wiI=
+periph.io/x/extra v0.0.0-20190805002851-353eec1a00ff/go.mod h1:hlHpGqAWxDzH2z0nxSh0GkkjMA6uvapwKKNnGeMnfCU=
+periph.io/x/periph v3.5.0+incompatible/go.mod h1:EWr+FCIU2dBWz5/wSWeiIUJTriYv9v2j2ENBmgYyy7Y=
+periph.io/x/periph v3.6.2+incompatible h1:B9vqhYVuhKtr6bXua8N9GeBEvD7yanczCvE0wU2LEqw=
+periph.io/x/periph v3.6.2+incompatible/go.mod h1:EWr+FCIU2dBWz5/wSWeiIUJTriYv9v2j2ENBmgYyy7Y=

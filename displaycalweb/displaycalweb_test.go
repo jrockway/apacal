@@ -78,6 +78,8 @@ func TestRun(t *testing.T) {
 	ctx, kill := context.WithCancel(context.Background())
 	go func() {
 		h.ch <- []byte("#FFFFFF")
+		h.ch <- []byte("#FFFFFF")
+		h.ch <- []byte("#010203")
 	}()
 
 	doneCh := make(chan error)
@@ -88,15 +90,21 @@ func TestRun(t *testing.T) {
 
 	timeoutCh := time.After(100 * time.Millisecond)
 
-	var c color.RGBA
 	select {
 	case <-timeoutCh:
 		t.Fatal("timeout waiting for color")
-	case c = <-resultCh:
-
+	case c := <-resultCh:
+		if got, want := c, (color.RGBA{R: 255, G: 255, B: 255, A: 255}); got != want {
+			t.Errorf("recv color:\n  got: %v\n want: %v", got, want)
+		}
 	}
-	if got, want := c, (color.RGBA{R: 255, G: 255, B: 255, A: 255}); got != want {
-		t.Errorf("recv color:\n  got: %v\n want: %v", got, want)
+	select {
+	case <-timeoutCh:
+		t.Fatal("timeout waiting for second color")
+	case c := <-resultCh:
+		if got, want := c, (color.RGBA{R: 1, G: 2, B: 3, A: 255}); got != want {
+			t.Errorf("recv color:\n  got: %v\n want: %v", got, want)
+		}
 	}
 	kill()
 
@@ -104,7 +112,6 @@ func TestRun(t *testing.T) {
 	case <-timeoutCh:
 		t.Fatal("timeout waiting for Run to stop")
 	case err := <-doneCh:
-		t.Log(err)
 		if err == nil {
 			t.Errorf("got no error, wanted 'context cancelled'")
 		}

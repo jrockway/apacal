@@ -14,7 +14,7 @@ type testHandler struct {
 	ch chan []byte
 }
 
-// Based on https://sourceforge.net/p/dispcalgui/code/HEAD/tree/trunk/DisplayCAL/webwin.py
+// Based on https://sourceforge.net/p/dispcalgui/code/HEAD/tree/trunk/DisplayCAL/webwin.py.
 func (h *testHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if req.URL.Path != "/ajax/messages" {
 		http.Error(w, "not found", http.StatusNotFound)
@@ -33,6 +33,38 @@ func (h *testHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	return
+}
+
+func TestParseColor(t *testing.T) {
+	testData := []struct {
+		input   string
+		want    color.RGBA
+		wantErr bool
+	}{
+		{"#000000", color.RGBA{0x00, 0x00, 0x00, 0xff}, false},
+		{"#FFFFFF", color.RGBA{0xff, 0xff, 0xff, 0xff}, false},
+		{"#ffffff", color.RGBA{0xff, 0xff, 0xff, 0xff}, false},
+		{"#0Aa1F0", color.RGBA{0x0a, 0xa1, 0xf0, 0xff}, false},
+
+		{"", color.RGBA{}, true},
+		{"!FFFFFF", color.RGBA{}, true},
+		{"#foobar", color.RGBA{}, true},
+		{"#f", color.RGBA{}, true},
+		{"hello there", color.RGBA{}, true},
+	}
+
+	for i, test := range testData {
+		got, err := parseColor([]byte(test.input))
+		if want := test.want; got != want {
+			t.Errorf("test %d: color:\n  got: %v\n want: %v", i, got, want)
+		}
+		if test.wantErr && err == nil {
+			t.Errorf("test %d: expected error", i)
+		}
+		if !test.wantErr && err != nil {
+			t.Errorf("test %d: unexpected error: %v", i, err)
+		}
+	}
 }
 
 func TestRun(t *testing.T) {
@@ -72,6 +104,7 @@ func TestRun(t *testing.T) {
 	case <-timeoutCh:
 		t.Fatal("timeout waiting for Run to stop")
 	case err := <-doneCh:
+		t.Log(err)
 		if err == nil {
 			t.Errorf("got no error, wanted 'context cancelled'")
 		}

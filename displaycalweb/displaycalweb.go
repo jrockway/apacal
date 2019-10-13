@@ -15,7 +15,7 @@ func Run(ctx context.Context, u *url.URL, ch <-chan color.RGBA) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("sending color: %w", err)
+			return fmt.Errorf("sending color: %w", ctx.Err())
 		}
 	}
 }

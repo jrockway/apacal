@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"image/color"
@@ -10,17 +11,21 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"time"
 
+	"github.com/jrockway/apacal/displaycalweb"
 	"periph.io/x/extra/hostextra"
 	"periph.io/x/periph/conn/spi/spireg"
 	"periph.io/x/periph/devices/apa102"
 )
 
 var (
-	webAddr   = flag.String("web", "http://localhost:8080", "address of the DisplayCAL web interface")
-	numPixels = flag.Int("pixels", 1, "number of LEDs to drive")
-	intensity = flag.Int("intensity", 15, "upper bound on brightness (0-255); see apa102.Opts.Intensity")
-	spiPort   string
+	webAddr    = flag.String("web", "http://localhost:8080", "address of the DisplayCAL web interface")
+	numPixels  = flag.Uint("pixels", 1, "number of LEDs to drive")
+	firstPixel = flag.Uint("from", 0, "first pixel to illuminate")
+	lastPixel  = flag.Uint("to", 1, "last pixel to illuminate")
+	intensity  = flag.Int("intensity", 80, "upper bound on brightness (0-255); see apa102.Opts.Intensity")
+	spiPort    string
 )
 
 func setupSPIFlag() {
@@ -38,10 +43,17 @@ func setupSPIFlag() {
 
 // setColor sets the entire LED strip/matrix to the provided color.  The alpha of the color is
 // ignored.
-func setColor(leds *apa102.Dev, n int, c color.RGBA) (int, error) {
-	pixels := make([]byte, 0, n*3)
-	for i := 0; i < n; i++ {
-		pixels = append(pixels, c.R, c.G, c.B)
+func setColor(leds *apa102.Dev, c color.RGBA) (int, error) {
+	pixels := make([]byte, *numPixels*3)
+	for i := uint(0); i < *numPixels; i++ {
+		pixels[i*3] = 0
+		pixels[i*3+1] = 0
+		pixels[i*3+2] = 0
+	}
+	for i := *firstPixel; i < *lastPixel; i++ {
+		pixels[i*3] = c.R
+		pixels[i*3+1] = c.G
+		pixels[i*3+2] = c.B
 	}
 	return leds.Write(pixels)
 }
@@ -59,6 +71,13 @@ func main() {
 		log.Fatalf("intensity value %d out of range 0-255", *intensity)
 	}
 
+	if *lastPixel >= *numPixels {
+		log.Fatalf("-from is greater than the number of pixels (%d >= %d)", *lastPixel, *numPixels)
+	}
+	if *firstPixel >= *lastPixel {
+		log.Fatalf("-from and -to out of range (%d >= %d)", *firstPixel, *lastPixel)
+	}
+
 	webURL, err := url.Parse(*webAddr)
 	if err != nil {
 		log.Fatalf("unable to parse provided web URL %q: %v", *webAddr, err)
@@ -66,27 +85,35 @@ func main() {
 
 	p, err := spireg.Open(spiPort)
 	if err != nil {
-		log.Fatalf("opening spi port %q: %v", spiPort, err)
+		log.Fatalf("open spi port %q: %v", spiPort, err)
 	}
 	defer p.Close()
 	opts := &apa102.Opts{
-		NumPixels:        *numPixels,
+		NumPixels:        int(*numPixels),
 		Intensity:        uint8(*intensity),
 		Temperature:      apa102.NeutralTemp, // Disable color correction, because the reason you're running this script is to do your own.
 		DisableGlobalPWM: true,
 	}
 	leds, err := apa102.New(p, opts)
 	if err != nil {
-		log.Printf("initialilzing apa102 device: %v", err)
+		log.Printf("init apa102 device: %v", err)
 		return
 	}
-	if _, err := setColor(leds, *numPixels, color.RGBA{255, 255, 255, 255}); err != nil {
-		log.Printf("setting leds to white: %v", err)
+	if _, err := setColor(leds, color.RGBA{255, 255, 255, 255}); err != nil {
+		log.Printf("set leds to white: %v", err)
 		return
 	}
 
-	log.Printf("waiting for colors from the web interface at %s, press C-c to abort", webURL)
+	log.Printf("Waiting for colors from the web interface at %s, press C-c to abort", webURL)
+
+	ctx, kill := context.WithCancel(context.Background())
+	doneCh := make(chan error)
 	colorCh := make(chan color.RGBA)
+	go func() {
+		doneCh <- displaycalweb.Run(ctx, webURL, colorCh)
+	}()
+	var exited bool
+
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt)
 loop:
@@ -94,14 +121,40 @@ loop:
 		select {
 		case c := <-colorCh:
 			log.Printf("received color %v", c)
+			if _, err := setColor(leds, c); err != nil {
+				log.Printf("set leds: %v")
+			}
+		case err := <-doneCh:
+			if err != nil {
+				log.Printf("read color: %v", err)
+			}
+			exited = true
+			close(colorCh)
+			close(doneCh)
+			break loop
 		case <-sigCh:
 			log.Printf("interrupt")
 			break loop
 		}
 	}
+	kill()
 	log.Printf("done")
-	if _, err := setColor(leds, *numPixels, color.RGBA{0, 0, 0, 255}); err != nil {
-		log.Printf("setting leds to black: %v", err)
+
+	if !exited {
+		select {
+		case err := <-doneCh:
+			if err != nil {
+				log.Printf("read color: %v", err)
+			}
+			close(colorCh)
+			close(doneCh)
+		case <-time.After(time.Second):
+			log.Printf("timeout waiting for web interface loop to stop")
+		}
+	}
+
+	if _, err := setColor(leds, color.RGBA{0, 0, 0, 255}); err != nil {
+		log.Printf("set leds to black: %v", err)
 		return
 	}
 	return

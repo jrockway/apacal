@@ -122,7 +122,7 @@ loop:
 		case c := <-colorCh:
 			log.Printf("received color %v", c)
 			if _, err := setColor(leds, c); err != nil {
-				log.Printf("set leds: %v")
+				log.Printf("set leds: %v", err)
 			}
 		case err := <-doneCh:
 			if err != nil {

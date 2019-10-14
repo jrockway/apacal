@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"image/color"
@@ -119,7 +120,15 @@ func main() {
 	doneCh := make(chan error)
 	colorCh := make(chan color.RGBA)
 	go func() {
-		doneCh <- displaycalweb.Run(ctx, webURL, colorCh)
+		for {
+			err := displaycalweb.Run(ctx, webURL, colorCh)
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				doneCh <- err
+				return
+			}
+			log.Printf("read color: %v", err)
+			time.Sleep(time.Second)
+		}
 	}()
 	var exited bool
 

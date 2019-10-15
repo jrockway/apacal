@@ -151,6 +151,7 @@ loop:
 			close(doneCh)
 			break loop
 		case <-sigCh:
+			signal.Stop(sigCh)
 			log.Printf("interrupt")
 			break loop
 		}
